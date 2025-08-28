@@ -6,6 +6,7 @@
     var gWebmapInstantiated = 0;
     var gMyLyr;
     var gMyWebmap;
+    var gPassedRadiusKm;
 
     template.innerHTML = `
         <link rel="stylesheet" href="https://js.arcgis.com/4.18/esri/themes/light/main.css">
