@@ -95,7 +95,7 @@
                     symbol: { type: "simple-marker", outline: { width: 1 } }
                 }));
                 // Fire event to SAC host with lat/lon/radius
-                this.dispatchEvent(new CustomEvent("onMapClick", {
+                that.dispatchEvent(new CustomEvent("onMapClick", {
                     detail: { lat, lon, radiusKm: gPassedRadiusKm }
                 }));
             });
