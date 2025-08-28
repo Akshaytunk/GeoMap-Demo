@@ -53,7 +53,7 @@
                 // ✅ Hardcoded WebMap ID
                 const webmap = new WebMap({
                     portalItem: {
-                        id: "2d96209ad9694a98bd980a5638e26211"
+                        id: "db3e9b839d7943dfabb14b33c98f00da"
                     }
                 });
 
