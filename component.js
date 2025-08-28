@@ -44,9 +44,9 @@
                 "esri/views/MapView",
                 "esri/widgets/BasemapToggle",
                 "esri/widgets/TimeSlider",
-                "esri/Graphic"
-            ], function(esriConfig, WebMap, MapView, BasemapToggle, TimeSlider, Graphic) {
-        
+                "esri/Graphic",
+                "esri/geometry/geometryEngine"
+            ], function(esriConfig, WebMap, MapView, BasemapToggle, TimeSlider, Graphic, geometryEngine) {
                 esriConfig.portalUrl = gPassedPortalURL;
                 esriConfig.apiKey = gPassedAPIkey;
 
@@ -78,7 +78,28 @@
                     view.ui.add(basemapToggle, "bottom-right");
                     applyDefinitionQuery();
                 });
+                view.on("click",(event) => {
+                    if (!event.mapPoint) return;
+                    const lat = event.mapPoint.latitude;
+                    const lon = event.mapPoint.longitude;
+                    const radiusMeters = (Number(gPassedRadiusKm) || 30) * 1000;
+
+                const buffer = geometryEngine.geodesicBuffer(event.mapPoint, radiusMeters, "meters");
+                view.graphics.removeAll();
+                view.graphics.add(new Graphic({
+                    geometry: buffer,
+                    symbol: { type: "simple-fill", style: "solid", outline: { width: 1 } }
+                }));
+                view.graphics.add(new Graphic({
+                    geometry: event.mapPoint,
+                    symbol: { type: "simple-marker", outline: { width: 1 } }
+                }));
+                // Fire event to SAC host with lat/lon/radius
+                this.dispatchEvent(new CustomEvent("onMapClick", {
+                    detail: { lat, lon, radiusKm: gPassedRadiusKm }
+                }));
             });
+        });
         }
 
         onCustomWidgetBeforeUpdate(changedProperties) {
@@ -86,10 +107,10 @@
         }
 
         onCustomWidgetAfterUpdate(changedProperties) {
-            if ("servicelevel" in changedProperties) {
-                this.$servicelevel = changedProperties["servicelevel"];
+            if ("radiuskm" in changedProperties) {
+                this.$radiuskm = changedProperties["radiuskm"];
             }
-            gPassedServiceType = this.$servicelevel;
+            gPassedRadiusKm = Number(this.$radiuskm) || 30;
 
             if ("portalurl" in changedProperties) {
                 this.$portalurl = changedProperties["portalurl"];

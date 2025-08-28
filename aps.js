@@ -36,6 +36,10 @@
               <td><label for="portalurl">Portal URL:</label></td>
               <td><input id="portalurl" name="portalurl" type="text"></td>
             </tr>
+            <tr>
+              <td><label for="radiuskm">Search Radius (in km):</label></td>
+              <td><input id="radiuskm" name="radiuskm" type="number" value="30"></td>
+            </tr>
           </table>
         </fieldset>
         <button type="submit" hidden>Submit</button>
@@ -92,6 +96,13 @@
             this.setValue("portalurl", value);
         }
 
+        get radiuskm() {
+            return this.getValue("radiuskm");
+        }
+        set radiuskm(value) {
+            this.setValue("radiuskm", value);
+        }
+
         getValue(id) {
             return this._shadowRoot.getElementById(id).value;
         }
@@ -100,7 +111,7 @@
         }
 
         static get observedAttributes() {
-            return ["apikey", "portalurl"];
+            return ["apikey", "portalurl", "radiuskm"];
         }
 
         attributeChangedCallback(name, oldValue, newValue) {
