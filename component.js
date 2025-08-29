@@ -79,7 +79,7 @@
                     view.ui.add(basemapToggle, "bottom-right");
                     applyDefinitionQuery();
                 });
-                view.on("click",(event) => {
+                view.on("click",function(event) {
                     if (!event.mapPoint) return;
                     const lat = event.mapPoint.latitude;
                     const lon = event.mapPoint.longitude;
