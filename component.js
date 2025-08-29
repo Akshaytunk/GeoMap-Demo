@@ -7,6 +7,7 @@
     var gMyLyr;
     var gMyWebmap;
     var gPassedRadiusKm;
+    var gView; // Store the view reference
 
     template.innerHTML = `
         <link rel="stylesheet" href="https://js.arcgis.com/4.18/esri/themes/light/main.css">
@@ -65,6 +66,8 @@
                     map: webmap
                 });
 
+                gView = view; // Store view globally
+
                 const timeSlider = new TimeSlider({
                     container: "timeSlider",
                     view: view
@@ -79,28 +82,64 @@
                     view.ui.add(basemapToggle, "bottom-right");
                     applyDefinitionQuery();
                 });
-                view.on("click",function(event) {
+
+                // UPDATED: Using hitTest like the sample code
+                view.on("click", function(event) {
+                    // First, get the basic map point coordinates
                     if (!event.mapPoint) return;
                     const lat = event.mapPoint.latitude;
                     const lon = event.mapPoint.longitude;
                     const radiusMeters = (Number(gPassedRadiusKm) || 30) * 1000;
 
-                const buffer = geometryEngine.geodesicBuffer(event.mapPoint, radiusMeters, "meters");
-                view.graphics.removeAll();
-                view.graphics.add(new Graphic({
-                    geometry: buffer,
-                    symbol: { type: "simple-fill", style: "solid", outline: { width: 1 } }
-                }));
-                view.graphics.add(new Graphic({
-                    geometry: event.mapPoint,
-                    symbol: { type: "simple-marker", outline: { width: 1 } }
-                }));
-                // Fire event to SAC host with lat/lon/radius
-                that.dispatchEvent(new CustomEvent("onMapClick", {
-                    detail: { lat, lon, radiusKm: gPassedRadiusKm }
-                }));
+                    // Draw buffer and marker
+                    const buffer = geometryEngine.geodesicBuffer(event.mapPoint, radiusMeters, "meters");
+                    view.graphics.removeAll();
+                    view.graphics.add(new Graphic({
+                        geometry: buffer,
+                        symbol: { type: "simple-fill", style: "solid", outline: { width: 1 } }
+                    }));
+                    view.graphics.add(new Graphic({
+                        geometry: event.mapPoint,
+                        symbol: { type: "simple-marker", outline: { width: 1 } }
+                    }));
+
+                    // NEW: Use hitTest to get more detailed information about what was clicked
+                    view.hitTest(event).then(function(response) {
+                        console.log("Hit test results:", response.results);
+                        
+                        // Dispatch the event with all the details
+                        that.dispatchEvent(new CustomEvent("onMapClick", {
+                            detail: { 
+                                lat: lat, 
+                                lon: lon, 
+                                radiusKm: gPassedRadiusKm,
+                                mapPoint: event.mapPoint,
+                                hitTestResults: response.results,
+                                screenPoint: event.screenPoint,
+                                timestamp: event.timestamp
+                            },
+                            bubbles: true,
+                            composed: true
+                        }));
+                        
+                        console.log("Dispatched onMapClick event with coordinates:", lat, lon);
+                    }).catch(function(error) {
+                        console.error("HitTest error:", error);
+                        
+                        // Fallback: dispatch event without hitTest results
+                        that.dispatchEvent(new CustomEvent("onMapClick", {
+                            detail: { 
+                                lat: lat, 
+                                lon: lon, 
+                                radiusKm: gPassedRadiusKm,
+                                mapPoint: event.mapPoint
+                            },
+                            bubbles: true,
+                            composed: true
+                        }));
+                    });
+                });
             });
-        });
         }
 
         onCustomWidgetBeforeUpdate(changedProperties) {
