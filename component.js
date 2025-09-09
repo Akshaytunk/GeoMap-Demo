@@ -36,8 +36,18 @@
     class Map extends HTMLElement {
         constructor() {
             super();
-            this.appendChild(template.content.cloneNode(true));
+            this._shadowRoot = this.attachShadow({ mode: "open" });
+            this._shadowRoot.appendChild(template.content.cloneNode(true));
             this._props = {};
+
+            // Internal storage for properties
+            this._portalurl = "";
+            this._apikey = "";
+            this._servicelevel = 0;
+            this._radiuskm = 30;
+            this._lat = 0;
+            this._lon = 0;
+
             let that = this;
 
             require([
@@ -62,14 +72,14 @@
                 gMyWebmap = webmap;
 
                 const view = new MapView({
-                    container: "mapview",
+                    container: that._shadowRoot.getElementById("mapview"),
                     map: webmap
                 });
 
                 gView = view; // Store view globally
 
                 const timeSlider = new TimeSlider({
-                    container: "timeSlider",
+                    container: that._shadowRoot.getElementById("timeSlider"),
                     view: view
                 });
 
@@ -83,20 +93,32 @@
                     applyDefinitionQuery();
                 });
 
-                // UPDATED: Using hitTest like the sample code
                 view.on("click", function(event) {
-                    // First, get the basic map point coordinates
                     if (!event.mapPoint) return;
                     const lat = event.mapPoint.latitude;
                     const lon = event.mapPoint.longitude;
                     console.log("Map clicked at lat:", lat, "lon:", lon);
                     const radiusMeters = (Number(gPassedRadiusKm) || 30) * 1000;
+
+                    // Set properties
                     that.lat = lat;
                     that.lon = lon;
-                    that.radiuskm = gPassedRadiusKm;
-                    that.dispatchEvent(new CustomEvent("onMapClick"));
 
-                    // Draw buffer and marker
+                    // Dispatch propertiesChanged to notify SAC
+                    that.dispatchEvent(new CustomEvent("propertiesChanged", {
+                        detail: {
+                            properties: {
+                                lat: that.lat,
+                                lon: that.lon
+                            }
+                        }
+                    }));
+
+                    // Dispatch the event to trigger SAC script (no detail/parameters)
+                    that.dispatchEvent(new CustomEvent("onMapClick", { bubbles: true, composed: true }));
+                    console.log("Dispatched onMapClick event");
+
+                    // Draw buffer and marker (unchanged)
                     const buffer = geometryEngine.geodesicBuffer(event.mapPoint, radiusMeters, "meters");
                     view.graphics.removeAll();
                     view.graphics.add(new Graphic({
@@ -107,53 +129,34 @@
                         geometry: event.mapPoint,
                         symbol: { type: "simple-marker", outline: { width: 1 } }
                     }));
-
-                    // NEW: Use hitTest to get more detailed information about what was clicked
-                    view.hitTest(event).then(function(response) {
-                        console.log("Hit test results:", response.results);
-                        that.onMapClickDetails = { 
-                                lat: lat, 
-                                lon: lon, 
-                                radiusKm: gPassedRadiusKm,
-                                mapPoint: event.mapPoint,
-                                hitTestResults: response.results,
-                                screenPoint: event.screenPoint,
-                                timestamp: event.timestamp
-                            }
-                        
-                        // Dispatch the event with all the details
-                        that.dispatchEvent(new CustomEvent("onMapClick", {
-                            detail: { 
-                                lat: lat, 
-                                lon: lon, 
-                                radiusKm: gPassedRadiusKm,
-                                mapPoint: event.mapPoint,
-                                hitTestResults: response.results,
-                                screenPoint: event.screenPoint,
-                                timestamp: event.timestamp
-                            },
-                            bubbles: true,
-                            composed: true
-                        }));
-                        
-                        console.log("Dispatched onMapClick event with coordinates:", lat, lon);
-                    }).catch(function(error) {
-                        console.error("HitTest error:", error);
-                        
-                        // Fallback: dispatch event without hitTest results
-                        that.dispatchEvent(new CustomEvent("onMapClick", {
-                            detail: { 
-                                lat: lat, 
-                                lon: lon, 
-                                radiusKm: gPassedRadiusKm,
-                                mapPoint: event.mapPoint
-                            },
-                            bubbles: true,
-                            composed: true
-                        }));
-                    });
                 });
             });
+        }
+
+        // Getters and setters for properties
+        get portalurl() { return this._portalurl; }
+        set portalurl(value) { this._portalurl = value; }
+
+        get apikey() { return this._apikey; }
+        set apikey(value) { this._apikey = value; }
+
+        get radiuskm() { return this._radiuskm; }
+        set radiuskm(value) { this._radiuskm = value; }
+
+        get lat() { return this._lat; }
+        set lat(value) { this._lat = value; }
+
+        get lon() { return this._lon; }
+        set lon(value) { this._lon = value; }
+
+        static get observedAttributes() {
+            return ["portalurl", "apikey", "servicelevel", "radiuskm", "lat", "lon"];
+        }
+
+        attributeChangedCallback(name, oldValue, newValue) {
+            if (oldValue !== newValue) {
+                this[name] = newValue;
+            }
         }
 
         onCustomWidgetBeforeUpdate(changedProperties) {
@@ -162,19 +165,19 @@
 
         onCustomWidgetAfterUpdate(changedProperties) {
             if ("radiuskm" in changedProperties) {
-                this.$radiuskm = changedProperties["radiuskm"];
+                this.radiuskm = changedProperties["radiuskm"];
             }
-            gPassedRadiusKm = Number(this.$radiuskm) || 30;
+            gPassedRadiusKm = Number(this.radiuskm) || 30;
 
             if ("portalurl" in changedProperties) {
-                this.$portalurl = changedProperties["portalurl"];
+                this.portalurl = changedProperties["portalurl"];
             }
-            gPassedPortalURL = this.$portalurl;
+            gPassedPortalURL = this.portalurl;
 
             if ("apikey" in changedProperties) {
-                this.$apikey = changedProperties["apikey"];
+                this.apikey = changedProperties["apikey"];
             }
-            gPassedAPIkey = this.$apikey;
+            gPassedAPIkey = this.apikey;
 
             if (gWebmapInstantiated === 1) {
                 applyDefinitionQuery();
