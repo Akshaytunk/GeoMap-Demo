@@ -91,6 +91,8 @@
                     const lon = event.mapPoint.longitude;
                     console.log("Map clicked at lat:", lat, "lon:", lon);
                     const radiusMeters = (Number(gPassedRadiusKm) || 30) * 1000;
+                    that.selectedCoordinates = { lat: lat, lon: lon, radiusMeters};
+                    that.dispatchEvent(new CustomEvent("onMapClick"));
 
                     // Draw buffer and marker
                     const buffer = geometryEngine.geodesicBuffer(event.mapPoint, radiusMeters, "meters");
