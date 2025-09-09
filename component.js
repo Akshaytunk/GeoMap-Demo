@@ -89,6 +89,7 @@
                     if (!event.mapPoint) return;
                     const lat = event.mapPoint.latitude;
                     const lon = event.mapPoint.longitude;
+                    console.log("Map clicked at lat:", lat, "lon:", lon);
                     const radiusMeters = (Number(gPassedRadiusKm) || 30) * 1000;
 
                     // Draw buffer and marker
@@ -106,6 +107,15 @@
                     // NEW: Use hitTest to get more detailed information about what was clicked
                     view.hitTest(event).then(function(response) {
                         console.log("Hit test results:", response.results);
+                        that.onMapClickDetails = { 
+                                lat: lat, 
+                                lon: lon, 
+                                radiusKm: gPassedRadiusKm,
+                                mapPoint: event.mapPoint,
+                                hitTestResults: response.results,
+                                screenPoint: event.screenPoint,
+                                timestamp: event.timestamp
+                            }
                         
                         // Dispatch the event with all the details
                         that.dispatchEvent(new CustomEvent("onMapClick", {
